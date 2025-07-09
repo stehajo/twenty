@@ -1,0 +1,18 @@
+{{- if .Values.persistence.server.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: twentycrm-server-pvc
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    {{- range .Values.persistence.server.accessModes }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.server.size }}
+  {{- if .Values.persistence.server.storageClass }}
+  storageClassName: {{ .Values.persistence.server.storageClass }}
+  {{- end }}
+{{- end }}

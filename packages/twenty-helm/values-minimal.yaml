@@ -1,0 +1,83 @@
+# Minimal configuration for the Twenty CRM Helm chart.
+# Use this as a starting point for custom values files.
+# Only the most essential options are included. See values.yaml and README for full documentation.
+
+namespace: twentycrm  # Namespace to deploy all resources into.
+
+service:
+  port: 80  # HTTP port for the main service.
+  type: ClusterIP  # Service type (ClusterIP, NodePort, LoadBalancer).
+
+serviceAccount:
+  create: true  # Set to false to use an existing service account.
+
+autoscaling:
+  enabled: false  # Enable horizontal pod autoscaling (advanced use).
+
+persistence:
+  db:
+    enabled: false    # No persistent storage for DB (data lost on restart!).
+  server:
+    enabled: false    # No persistent storage for server data.
+  kubeData:
+    enabled: false    # No persistent storage for application data (Kubernetes PVC).
+
+useExternalDb: false      # Set to true to use an external Postgres DB.
+useExternalRedis: false   # Set to true to use an external Redis.
+
+image:
+  repository: twentycrm/twenty  # Main app image.
+  tag: latest                   # Pin to a version for production.
+
+resources:
+  db: {}  # No resource requests/limits for DB (not deployed in minimal config).
+  redis:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  server: {}  # No resource requests/limits for server (minimal config).
+  worker:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+scheduling:
+  db:
+    nodeSelector: {}    # Leave empty for default scheduling.
+    tolerations: []
+    affinity: {}
+  redis:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  server:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  worker:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+env:
+  SERVER_URL: "https://crm.example.com:443"  # Public URL of the app.
+  APP_SECRET: "accessToken"                  # Application secret (change for production!).
+
+secrets:
+  tokens:
+    APP_SECRET: "accessToken"  # Application secret token.
+
+ingress:
+  enabled: false  # No ingress resource created in minimal config.
+
+# --- NOTES ---
+# - This file disables persistence and ingress for a minimal, stateless deployment.
+# - For production, enable persistence and ingress, and set strong secrets.
+# - See values.yaml and README for all available options and best practices.
+# - Common pitfall: forgetting to enable persistence will cause data loss!

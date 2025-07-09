@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twentycrm-worker
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: twentycrm-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: twentycrm-worker
+  template:
+    metadata:
+      labels:
+        app: twentycrm-worker
+    spec:
+      containers:
+        - name: twentycrm
+          image: twentycrm/twenty:{{ .Values.image.tag }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http-tcp
+              protocol: TCP
+          resources:
+            requests:
+              memory: "{{ .Values.resources.worker.requests.memory }}"
+              cpu: "{{ .Values.resources.worker.requests.cpu }}"
+            limits:
+              memory: "{{ .Values.resources.worker.limits.memory }}"
+              cpu: "{{ .Values.resources.worker.limits.cpu }}"
+          env:
+            - name: SERVER_URL
+              value: "{{ .Values.env.SERVER_URL }}"
+            - name: NODE_PORT
+              value: "3000"
+            - name: REDIS_URL
+              value: "{{ if .Values.useExternalRedis }}{{ .Values.externalRedis.url }}{{ else }}{{ .Values.env.REDIS_URL }}{{ end }}"
+            - name: PG_DATABASE_URL
+              value: "{{ if .Values.useExternalDb }}{{ .Values.externalDb.url }}{{ else }}postgres://postgres:postgres@twentycrm-db.{{ .Values.namespace }}.svc.cluster.local/default{{ end }}"
+            - name: DISABLE_DB_MIGRATIONS
+              value: "false"
+            - name: STORAGE_TYPE
+              value: "{{ .Values.env.STORAGE_TYPE }}"
+            - name: APP_SECRET
+              value: "{{ .Values.env.APP_SECRET }}"
+      restartPolicy: Always

@@ -1,0 +1,76 @@
+{{- if not .Values.useExternalDb }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: twentycrm-db
+  name: twentycrm-db
+  namespace: {{ .Values.namespace }}
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: twentycrm-db
+  template:
+    metadata:
+      labels:
+        app: twentycrm-db
+    spec:
+      {{- with .Values.scheduling.db.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.scheduling.db.tolerations }}
+      tolerations:
+{{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.scheduling.db.affinity }}
+      affinity:
+{{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- if .Values.persistence.db.enabled }}
+        - name: twentycrm-db-data
+          persistentVolumeClaim:
+            claimName: twentycrm-db-pvc
+        {{- end }}
+      containers:
+        - name: twentycrm
+          image: twentycrm/twenty-postgres-spilo:{{ .Values.image.tag }}
+          imagePullPolicy: Always
+          env:
+            - name: PGUSER_SUPERUSER
+              value: {{ .Values.env.PGUSER_SUPERUSER }}
+            - name: PGPASSWORD_SUPERUSER
+              value: {{ .Values.env.PGPASSWORD_SUPERUSER }}
+            - name: SPILO_PROVIDER
+              value: "local"
+            - name: ALLOW_NOSSL
+              value: "true"
+          ports:
+            - containerPort: 5432
+              name: tcp
+              protocol: TCP
+          resources:
+            requests:
+              memory: {{ .Values.resources.db.requests.memory }}
+              cpu: {{ .Values.resources.db.requests.cpu }}
+            limits:
+              memory: {{ .Values.resources.db.limits.memory }}
+              cpu: {{ .Values.resources.db.limits.cpu }}
+          stdin: true
+          tty: true
+          volumeMounts:
+            {{- if .Values.persistence.db.enabled }}
+            - mountPath: /home/postgres/pgdata
+              name: twentycrm-db-data
+            {{- end }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+{{- end }}

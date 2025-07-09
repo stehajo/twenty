@@ -1,0 +1,172 @@
+# Main service configuration for the Twenty CRM Helm chart.
+# For most users, only a few values need to be changed for a basic deployment.
+# See the README for full documentation and troubleshooting tips.
+
+service:
+  port: 80  # Service port for HTTP traffic. Change if you want to expose a different port.
+  type: ClusterIP  # Service type (ClusterIP, NodePort, LoadBalancer). Use NodePort/LoadBalancer for external access.
+
+serviceAccount:
+  create: true  # Set to false to use an existing service account.
+
+autoscaling:
+  enabled: false  # Enable horizontal pod autoscaling (not enabled by default).
+
+# Persistent storage configuration for database, server, and application data (Kubernetes PVC).
+# WARNING: Disabling persistence will cause data loss on pod restarts!
+persistence:
+  db:
+    enabled: true  # Set to false to use ephemeral storage for Postgres (not recommended for production).
+    storageClass: ""  # Specify a StorageClass or leave empty for default.
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi  # PVC size for Postgres data.
+  server:
+    enabled: true  # Set to false to use ephemeral storage for server uploads/data.
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi  # PVC size for server data.
+  kubeData:
+    enabled: true  # Set to false to disable application data persistence (advanced use).
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi  # PVC size for application data (Kubernetes PVC).
+
+namespace: twentycrm  # Namespace to deploy all resources into.
+
+# Database configuration
+useExternalDb: false  # Set to true to use an external (managed) Postgres database.
+externalDb:
+  url: "postgres://user:password@host:5432/dbname"  # Only used if useExternalDb is true.
+
+# Redis configuration
+useExternalRedis: false  # Set to true to use an external (managed) Redis instance.
+externalRedis:
+  url: "redis://host:6379"  # Only used if useExternalRedis is true.
+
+# Image configuration for all components.
+image:
+  repository: twentycrm/twenty  # Main app image repository.
+  tag: latest  # Main app image tag. Pin to a version for production.
+  redisRepository: redis/redis-stack-server  # Redis image repository.
+  redisTag: latest  # Redis image tag.
+  dbRepository: twentycrm/twenty-postgres-spilo  # Postgres image repository.
+  dbTag: latest  # Postgres image tag.
+
+# Resource requests and limits for each component.
+resources:
+  db:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "1000m"
+  redis:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "1000m"
+  server:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2048Mi"
+      cpu: "2000m"
+  worker:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2048Mi"
+      cpu: "2000m"
+
+# Pod scheduling and affinity options for each component.
+# Only set these if you need to control pod placement (e.g., for node pools, taints, or affinity).
+# Leave as empty objects/lists for default scheduling.
+scheduling:
+  db:
+    nodeSelector: {}    # Example: {"disktype": "ssd"}
+    tolerations: []     # Example: [{key: "key", operator: "Equal", value: "value", effect: "NoSchedule"}]
+    affinity: {}        # Example: node/pod affinity rules.
+  redis:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  server:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  worker:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# Environment variables for the application.
+# Many of these are required for production deployments.
+env:
+  PGUSER_SUPERUSER: "postgres"  # Superuser for Postgres (used for DB migrations).
+  PGPASSWORD_SUPERUSER: "postgres"  # Superuser password (do NOT use default in production).
+  SERVER_URL: "https://crm.example.com:443"  # Public URL of the app.
+  REDIS_URL: "redis://twentycrm-redis.twentycrm.svc.cluster.local:6379"  # Redis connection string.
+  SIGN_IN_PREFILLED: "false"  # Prefill sign-in form (dev only).
+  STORAGE_TYPE: "local"  # Storage backend type (local, s3, etc).
+  ACCESS_TOKEN_EXPIRES_IN: "7d"  # Access token expiry (e.g., 7d, 24h).
+  LOGIN_TOKEN_EXPIRES_IN: "1h"  # Login token expiry.
+  APP_SECRET: "accessToken"  # Application secret (change for production!).
+
+# Secret values (do NOT commit real secrets to version control!).
+# Use external secret management for production (e.g., Helm Secrets, SOPS, or Kubernetes Secrets).
+secrets:
+  tokens:
+    APP_SECRET: "accessToken"  # Application secret token.
+  NODE_PORT: "3000"  # Node.js server port (advanced use).
+  DISABLE_DB_MIGRATIONS: "false"  # Set to true to disable DB migrations on startup.
+
+# Ingress configuration for exposing the application via HTTP/HTTPS.
+ingress:
+  enabled: true  # Set to true to create an ingress resource.
+
+  # Annotations to add to the ingress resource (e.g., for cert-manager, nginx, etc.)
+  annotations:
+    # kubernetes.io/ingress.class: "nginx"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    {}
+
+  # List of host rules. Each host can have multiple paths.
+  hosts:
+    - host: crm.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+    # Example for multiple hosts and paths:
+    # - host: api.example.com
+    #   paths:
+    #     - path: /api
+    #       pathType: Prefix
+    #     - path: /health
+    #       pathType: ImplementationSpecific
+
+  # TLS configuration for the ingress resource.
+  # Each entry requires a secretName and a list of hosts.
+  tls:
+    # - secretName: crm-tls
+    #   hosts:
+    #     - crm.example.com
+    # - secretName: api-tls
+    #   hosts:
+    #     - api.example.com
+    []
+
+# --- TROUBLESHOOTING TIPS ---
+# - If you see YAML parse errors, check for mixed indentation or missing quotes around Helm expressions.
+# - Always wrap Helm value interpolations in double quotes in your templates.
+# - If pods fail to start, check resource requests/limits and persistent volume claims.
+# - For external DB/Redis, ensure your connection strings are correct and accessible from the cluster.
+# - For ingress issues, verify your ingress controller is installed and annotations are correct.
+# - For secret values, never commit real secrets to version control.

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twentycrm-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: twentycrm-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: twentycrm-server
+  template:
+    metadata:
+      labels:
+        app: twentycrm-server
+    spec:
+      containers:
+        - name: twentycrm
+          image: twentycrm/twenty:{{ .Values.image.tag }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http-tcp
+              protocol: TCP
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 500m
+            limits:
+              memory: 2048Mi
+              cpu: 2000m
+          env:
+            - name: SERVER_URL
+              value: {{ .Values.env.SERVER_URL }}
+            - name: NODE_PORT
+              value: "3000"
+      restartPolicy: Always

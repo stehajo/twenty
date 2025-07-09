@@ -1,0 +1,18 @@
+{{- if .Values.persistence.kubeData.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: twentycrm-kube-data-pvc
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    {{- range .Values.persistence.kubeData.accessModes }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.kubeData.size }}
+  {{- if .Values.persistence.kubeData.storageClass }}
+  storageClassName: {{ .Values.persistence.kubeData.storageClass }}
+  {{- end }}
+{{- end }}
